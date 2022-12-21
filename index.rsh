@@ -69,13 +69,11 @@ export const main = Reach.App(() => {
         if(n == num){
           // you win, transfer nft
           // negate loop variable tCount
-          const b = true;
           ret(true);
           transfer(1, tok).to(addr);
           return[countDown - 1, tCount + 1];
         } else {
           // you loose, leave tCount
-          const b = false;
           ret(false);
           delete pMap[addr];
           return[countDown - 1, tCount]
