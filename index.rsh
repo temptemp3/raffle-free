@@ -13,12 +13,15 @@ export const main = Reach.App(() => {
     // set params
     params: Object({
       max: UInt,
+      tok: Token,
     }),
     launched: Fun([Contract], Null),
     getNum: Fun([UInt], UInt),
+    showNum: Fun([UInt], Null),
   });
   const B = API({
     getTicket: Fun([Address], UInt),
+    checkTicket: Fun([Address], Bool),
   });
   const V = View({
     howMany: Fun([], UInt),
@@ -26,15 +29,18 @@ export const main = Reach.App(() => {
   init();
   A.only(() => {
     const p = declassify(interact.params);
-    const {max} = p;
+    const {max, tok} = p;
   });
-  A.publish(max);
+  A.publish(max, tok);
+  commit();
+  A.pay([[1, tok]]);
   A.interact.launched(getContract());
 
   const pMap = new Map(Address, UInt);
   const [count, left] = parallelReduce([1, max])
     .define(() => {V.howMany.set(() => left);})
     .invariant(balance() == 0, "network token balance wrong")
+    .invariant(balance(tok) == 1, "nft balance wrong")
     .while(count < max + 1)
     .api_(B.getTicket, (addr) => {
       check(isNone(pMap[this]), "sorry, you are already in the list");
@@ -43,7 +49,36 @@ export const main = Reach.App(() => {
         pMap[addr] = count;
         return[count + 1, left - 1];
       }];
-    })
+    });
+  commit();
+  A.only(() => {
+    const num = declassify(interact.getNum(max));
+  });
+  A.publish(num);
+  A.interact.showNum(num);
+  const [countDown, tCount] = parallelReduce([count, 0])
+    .invariant(balance() == 0, "network token balance wrong")
+    .invariant(balance(tok) == 1 - tCount, "nft balance wrong")
+    .while(tCount < 1)
+    .api_(B.checkTicket, (addr) => {
+      check(isSome(pMap[addr]), 'Sorry, you are not in the list');
+      return[ , (ret) => {
+        const n = fromSome(pMap[addr], 0);
+        if(n == num){
+          // you win, transfer nft
+          // negate loop variable tCount
+          const b = true;
+          ret(true);
+          transfer(1, tok).to(addr);
+          return[countDown - 1, tCount + 1];
+        } else {
+          // you loose, leave tCount
+          const b = false;
+          ret(false);
+          return[countDown - 1, tCount]
+        }
+      }];
+    });
   commit();
   exit();
 })
