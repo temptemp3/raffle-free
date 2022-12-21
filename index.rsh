@@ -37,8 +37,8 @@ export const main = Reach.App(() => {
   A.interact.launched(getContract());
 
   const pMap = new Map(Address, UInt);
-  const [count, left] = parallelReduce([1, max])
-    .define(() => {V.howMany.set(() => left);})
+  const [count] = parallelReduce([1])
+    .define(() => {V.howMany.set(() => max - (count - 1));})
     .invariant(balance() == 0, "network token balance wrong")
     .invariant(balance(tok) == 1, "nft balance wrong")
     .while(count < max + 1)
@@ -47,15 +47,17 @@ export const main = Reach.App(() => {
       return[ , (ret) => {
         ret(count);
         pMap[addr] = count;
-        return[count + 1, left - 1];
+        return[count + 1];
       }];
     });
   commit();
+
   A.only(() => {
     const num = declassify(interact.getNum(max));
   });
   A.publish(num);
   A.interact.showNum(num);
+
   const [countDown, tCount] = parallelReduce([count, 0])
     .invariant(balance() == 0, "network token balance wrong")
     .invariant(balance(tok) == 1 - tCount, "nft balance wrong")
@@ -75,6 +77,7 @@ export const main = Reach.App(() => {
           // you loose, leave tCount
           const b = false;
           ret(false);
+          delete pMap[addr];
           return[countDown - 1, tCount]
         }
       }];
