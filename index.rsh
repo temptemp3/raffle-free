@@ -43,7 +43,7 @@ export const main = Reach.App(() => {
     .invariant(balance(tok) == 1, "nft balance wrong")
     .while(count < max + 1)
     .api_(B.getTicket, (addr) => {
-      check(isNone(pMap[this]), "sorry, you are already in the list");
+      check(isNone(pMap[addr]), "sorry, you are already in the list");
       return[ , (ret) => {
         ret(count);
         pMap[addr] = count;
@@ -58,25 +58,22 @@ export const main = Reach.App(() => {
   A.publish(num);
   A.interact.showNum(num);
 
-  const [countDown, tCount] = parallelReduce([count, 0])
+  const [tokFlag] = parallelReduce([0])
     .invariant(balance() == 0, "network token balance wrong")
-    .invariant(balance(tok) == 1 - tCount, "nft balance wrong")
-    .while(tCount < 1)
+    .invariant(balance(tok) == 1 - tokFlag, "nft balance wrong")
+    .while(tokFlag < 1)
     .api_(B.checkTicket, (addr) => {
       check(isSome(pMap[addr]), 'Sorry, you are not in the list');
       return[ , (ret) => {
         const n = fromSome(pMap[addr], 0);
         if(n == num){
-          // you win, transfer nft
-          // negate loop variable tCount
           ret(true);
           transfer(1, tok).to(addr);
-          return[countDown - 1, tCount + 1];
+          return[tokFlag + 1];
         } else {
-          // you loose, leave tCount
           ret(false);
           delete pMap[addr];
-          return[countDown - 1, tCount]
+          return[tokFlag]
         }
       }];
     });

@@ -1,3 +1,8 @@
+/**
+ * Can I allow users to make API calls with just their wallet address? I can think
+ * of a workaround where the bot accepts the wallet address and a hardcoded account
+ * handles the actual API call. Couldn't you just write it with a single participant?
+ */
 import { loadStdlib } from "@reach-sh/stdlib";
 import * as backend from './build/index.main.mjs';
 const stdlib = loadStdlib({REACH_NO_WARN: 'Y'});
@@ -14,6 +19,7 @@ const NFT = await stdlib.launchToken(acc0, "NFTok", "NFT", {supply: 1});
 const startBuyers = async () => {
   const runBuyer = async (i) => {
     const acc = await stdlib.newTestAccount(sbal);
+    console.log(`Account handle here: ${acc}`);
     await acc.tokenAccept(NFT.id);
     const ctc = acc.contract(backend, ctc0.getInfo());
     pAcc.push([acc, ctc]);
@@ -32,11 +38,10 @@ const startBuyers = async () => {
 };// end of startBuyers
 
 const checkWin = async () => {
-  await stdlib.wait(10);
-  for (const [who, ctc] of pAcc){
+  for (const [acc, ctc] of pAcc){
     try{
-      const b = await ctc.a.checkTicket(who);
-      console.log(`${stdlib.formatAddress(who.getAddress())} saw the result they win is: ${b}`);
+      const b = await ctc.a.checkTicket(acc);
+      console.log(`${acc.getAddress()} saw the result they win is: ${b}`);
     }catch(e){
       console.log(`Sorry, the winning ticket has already been claimed`);
     };
@@ -58,7 +63,8 @@ await ctc0.p.Admin({
   },
   showNum: async (n) => {
     console.log(`The winning number is ${n}`);
-    // winning number is now out, we can allow api calls now
+    // winning number is out, we can allow api calls
+    // may need to gate this at the frontend
     await checkWin();
   },
 });
