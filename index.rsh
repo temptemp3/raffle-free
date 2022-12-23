@@ -1,82 +1,13 @@
-/**
- * This DApp allows users to register their wallets for free
- * for the raffle
- * 
- * This uses a "first come, first serve" for the list
- * right now, it could use the VRF once it is implemented
- * 
- */
 'reach 0.1';
-
-export const main = Reach.App(() => {
-  const A = Participant('Admin', {
-    // set params
-    params: Object({
-      max: UInt,
-      tok: Token,
-    }),
-    launched: Fun([Contract], Null),
-    getNum: Fun([UInt], UInt),
-    showNum: Fun([UInt], Null),
-  });
-  const B = API({
-    getTicket: Fun([Address], UInt),
-    checkTicket: Fun([Address], Bool),
-  });
-  const V = View({
-    howMany: Fun([], UInt),
-  });
-  init();
-  A.only(() => {
-    const p = declassify(interact.params);
-    const {max, tok} = p;
-  });
-  A.publish(max, tok);
-  commit();
-  A.pay([[1, tok]]);
-  A.interact.launched(getContract());
-
-  const pMap = new Map(Address, UInt);
-  const [count] = parallelReduce([1])
-    .define(() => {V.howMany.set(() => max - (count - 1));})
-    .invariant(balance() == 0, "network token balance wrong")
-    .invariant(balance(tok) == 1, "nft balance wrong")
-    .while(count < max + 1)
-    .api_(B.getTicket, (addr) => {
-      check(isNone(pMap[addr]), "sorry, you are already in the list");
-      return[ , (ret) => {
-        ret(count);
-        pMap[addr] = count;
-        return[count + 1];
-      }];
-    });
-  commit();
-
-  A.only(() => {
-    const num = declassify(interact.getNum(max));
-  });
-  A.publish(num);
-  A.interact.showNum(num);
-
-  const [tokFlag] = parallelReduce([0])
-    .invariant(balance() == 0, "network token balance wrong")
-    .invariant(balance(tok) == 1 - tokFlag, "nft balance wrong")
-    .while(tokFlag < 1)
-    .api_(B.checkTicket, (addr) => {
-      check(isSome(pMap[addr]), 'Sorry, you are not in the list');
-      return[ , (ret) => {
-        const n = fromSome(pMap[addr], 0);
-        if(n == num){
-          ret(true);
-          transfer(1, tok).to(addr);
-          return[tokFlag + 1];
-        } else {
-          ret(false);
-          delete pMap[addr];
-          return[tokFlag]
-        }
-      }];
-    });
-  commit();
-  exit();
-})
+'use strict'
+// -----------------------------------------------
+// Name: Template
+// Description: Reach App using Constructor
+// Version: 0.1.1 - update version
+// Requires Reach v0.1.9 (402c3faa)
+// ----------------------------------------------
+import { useConstructor } from '@nash-protocol/starter-kit#hydrogen-v0.1.10r1:util.rsh'
+import { Participants as AppParticipants,Views, Api, App, Event } from 'interface.rsh'
+export const main = Reach.App(() => 
+  App(useConstructor(AppParticipants, Views, Api, Event)));
+// ----------------------------------------------
