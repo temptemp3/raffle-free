@@ -66,8 +66,6 @@ const fAnnounce = Fun([UInt], Null);
 const fClaimPrize = Fun([], Null);
 const fCancel = Fun([], Null);
 
-// REMOTE FUN
-
 // API
 
 const api = {
