@@ -10,6 +10,7 @@
  * This uses a "first come, first serve" for the list
  * right now, it could use the VRF once it is implemented
  *
+ * Version: 0.0.2 - fix bug in get ticket api
  */
 
 import {
@@ -145,7 +146,7 @@ export const App = (map) => {
       return [
         (k) => {
           k(null);
-          pMap[addr] = s.count + 1;
+          pMap[this] = s.count + 1;
           return [
             {
               ...s,
