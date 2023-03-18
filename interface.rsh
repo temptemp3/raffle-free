@@ -10,7 +10,7 @@
  * This uses a "first come, first serve" for the list
  * right now, it could use the VRF once it is implemented
  *
- * Version: 0.0.2 - fix bug in get ticket api
+ * Version: 0.0.3 - add events, fix claim api
  */
 
 import {
@@ -56,7 +56,6 @@ export const Participants = () => [
   Participant("Manager", {
     getParams: Fun([], Params),
   }),
-  Participant("Relay", {}),
 ];
 
 // FUN
@@ -75,22 +74,41 @@ const api = {
   cancel: fCancel,
 };
 
+// EVENTS
+
+const eTicket = [Address, UInt];
+const eNum = [UInt];
+const eWinner = [Address];
+const eClaim = [Address, UInt];
+
+const raffleEvents = {
+  ticket: eTicket,
+  num: eNum,
+  winner: eWinner,
+  claim: eClaim,
+};
+
+const events = {
+  ...baseEvents,
+  ...raffleEvents,
+};
+
 // CONTRACT
 
 export const Views = () => [View(view(State))];
 
-export const Event = () => [Events({ ...baseEvents })];
+export const Event = () => [Events(events)];
 
 export const Api = () => [API(api)];
 
 export const App = (map) => {
   const [
-    { amt, ttl, tok0: token },
-    [addr, _],
-    [Manager, Relay],
-    [v],
-    [a],
-    [e],
+    { amt, ttl, tok0: token }, // activation cost, time to live
+    [addr, _], // constructors
+    [Manager], // your participants
+    [v], // your views
+    [a], // your apis
+    [e], // your events
   ] = map;
 
   Manager.only(() => {
@@ -145,6 +163,7 @@ export const App = (map) => {
         (k) => {
           k(null);
           pMap[this] = s.count + 1;
+          e.ticket(this, s.count + 1);
           return [
             {
               ...s,
@@ -165,10 +184,11 @@ export const App = (map) => {
       return [
         (k) => {
           k(null);
+          e.num(num);
           return [
             {
               ...s,
-              num
+              num,
             },
           ];
         },
@@ -181,12 +201,13 @@ export const App = (map) => {
       return [
         (k) => {
           k(null);
-          transfer(tokenAmount, token).to(addr);
+          e.winner(this);
+          transfer(tokenAmount, token).to(this);
           return [
             {
               ...s,
               closed: true,
-              who: this
+              who: this,
             },
           ];
         },
@@ -201,7 +222,7 @@ export const App = (map) => {
           return [
             {
               ...s,
-              closed: true
+              closed: true,
             },
           ];
         },
@@ -209,8 +230,6 @@ export const App = (map) => {
     })
     .timeout(false);
   e.appClose();
-  commit();
-  Relay.publish();
   commit();
   exit();
 };
